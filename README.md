@@ -1,7 +1,11 @@
 # MATLAB MCP Server
 ![GitHub Logo](https://github.com/WilliamCloudQi/matlab-mcp-server/blob/main/-------matlab-mcp-----.png)
 
-A powerful MCP server that integrates MATLAB with  AI, allowing you to execute MATLAB code, generate MATLAB scripts from natural language descriptions, and access MATLAB documentation directly through your AI assistant.
+A powerful MCP server that integrates MATLAB with AI, allowing you to execute MATLAB code, generate MATLAB scripts from natural language descriptions, and access MATLAB documentation directly through your AI assistant.
+
+<a href="https://glama.ai/mcp/servers/t3mmsdxvmd">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/t3mmsdxvmd/badge" alt="MATLAB Server MCP server" />
+</a>
 
 ## Features
 
