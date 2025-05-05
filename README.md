@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/williamcloudqi-matlab-mcp-server-badge.png)](https://mseep.ai/app/williamcloudqi-matlab-mcp-server)
+
 # MATLAB MCP Server
 ![GitHub Logo](https://github.com/WilliamCloudQi/matlab-mcp-server/blob/main/-------matlab-mcp-----.png)
 
