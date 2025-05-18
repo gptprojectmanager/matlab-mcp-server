@@ -1,6 +1,5 @@
-[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/williamcloudqi-matlab-mcp-server-badge.png)](https://mseep.ai/app/williamcloudqi-matlab-mcp-server)
-
 # MATLAB MCP Server
+We welcome contributions from everyone.
 [![smithery badge](https://smithery.ai/badge/@WilliamCloudQi/matlab-mcp-server)](https://smithery.ai/server/@WilliamCloudQi/matlab-mcp-server)
 ![GitHub Logo](https://github.com/WilliamCloudQi/matlab-mcp-server/blob/main/-------matlab-mcp-----.png)
 
@@ -111,3 +110,5 @@ npm run inspector
 ```
 
 The Inspector will provide a URL to access debugging tools in your browser.
+
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/williamcloudqi-matlab-mcp-server-badge.png)](https://mseep.ai/app/williamcloudqi-matlab-mcp-server)
