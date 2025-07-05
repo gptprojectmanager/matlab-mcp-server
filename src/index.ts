@@ -7,10 +7,13 @@
  * 1. Execute MATLAB code
  * 2. Generate MATLAB code from natural language descriptions
  * 3. Access MATLAB documentation
+ * 
+ * Supports both stdio and SSE transports
  */
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { StreamableHTTPTransport } from "./streamable-http-transport.js";
 import {
   CallToolRequestSchema,
   ErrorCode,
@@ -455,13 +458,344 @@ You can ask the AI to generate MATLAB code for specific tasks, such as:
   }
 
   /**
-   * Start the server
+   * Handle tool calls for HTTP transport
+   */
+  private async handleToolCall(message: any): Promise<any> {
+    const toolName = message.params?.name;
+    const args = message.params?.arguments || {};
+
+    // Check MATLAB availability if not already checked
+    if (!this.matlabAvailable) {
+      this.matlabAvailable = await this.matlabHandler.checkMatlabAvailability();
+      
+      if (!this.matlabAvailable && toolName === 'execute_matlab_code') {
+        return {
+          jsonrpc: '2.0',
+          id: message.id,
+          result: {
+            content: [
+              {
+                type: 'text',
+                text: 'Error: MATLAB is not available. Please make sure MATLAB is installed and the path is correctly set in the environment variable MATLAB_PATH.'
+              }
+            ],
+            isError: true
+          }
+        };
+      }
+    }
+
+    switch (toolName) {
+      case 'execute_matlab_code': {
+        const code = String(args.code || '');
+        const saveScript = Boolean(args.saveScript || false);
+        const scriptPath = args.scriptPath as string | undefined;
+        
+        if (!code) {
+          return {
+            jsonrpc: '2.0',
+            id: message.id,
+            error: {
+              code: -32602,
+              message: 'MATLAB code is required'
+            }
+          };
+        }
+        
+        try {
+          const result = await this.matlabHandler.executeCode(code, saveScript, scriptPath);
+          
+          let responseText = result.error 
+            ? `Error executing MATLAB code:\n${result.error}`
+            : `MATLAB execution result:\n${result.output}`;
+          
+          if (result.scriptPath) {
+            responseText += `\n\nMATLAB script saved to: ${result.scriptPath}`;
+          }
+          
+          return {
+            jsonrpc: '2.0',
+            id: message.id,
+            result: {
+              content: [
+                {
+                  type: 'text',
+                  text: responseText
+                }
+              ],
+              isError: !!result.error
+            }
+          };
+        } catch (error) {
+          return {
+            jsonrpc: '2.0',
+            id: message.id,
+            result: {
+              content: [
+                {
+                  type: 'text',
+                  text: `Error executing MATLAB code: ${error instanceof Error ? error.message : String(error)}`
+                }
+              ],
+              isError: true
+            }
+          };
+        }
+      }
+      
+      case 'generate_matlab_code': {
+        const description = String(args.description || '');
+        const saveScript = Boolean(args.saveScript || false);
+        const scriptPath = args.scriptPath as string | undefined;
+        
+        if (!description) {
+          return {
+            jsonrpc: '2.0',
+            id: message.id,
+            error: {
+              code: -32602,
+              message: 'Description is required'
+            }
+          };
+        }
+        
+        try {
+          const generatedCode = this.matlabHandler.generateCode(description);
+          
+          let responseText = `Generated MATLAB code for: "${description}"\n\n\`\`\`matlab\n${generatedCode}\n\`\`\``;
+          
+          // Save the generated code if requested
+          if (saveScript) {
+            const targetPath = scriptPath || path.join(process.cwd(), `matlab_generated_${Date.now()}.m`);
+            fs.writeFileSync(targetPath, generatedCode);
+            responseText += `\n\nGenerated MATLAB script saved to: ${targetPath}`;
+          }
+          
+          return {
+            jsonrpc: '2.0',
+            id: message.id,
+            result: {
+              content: [
+                {
+                  type: 'text',
+                  text: responseText
+                }
+              ]
+            }
+          };
+        } catch (error) {
+          return {
+            jsonrpc: '2.0',
+            id: message.id,
+            result: {
+              content: [
+                {
+                  type: 'text',
+                  text: `Error generating MATLAB code: ${error instanceof Error ? error.message : String(error)}`
+                }
+              ],
+              isError: true
+            }
+          };
+        }
+      }
+      
+      default:
+        return {
+          jsonrpc: '2.0',
+          id: message.id,
+          error: {
+            code: -32601,
+            message: `Unknown tool: ${toolName}`
+          }
+        };
+    }
+  }
+
+  /**
+   * Start the server with dual-mode support (stdio or SSE)
    */
   async run() {
-    const transport = new StdioServerTransport();
-    await this.server.connect(transport);
-    console.error('MATLAB MCP server running on stdio');
+    const args = process.argv.slice(2);
+    const useHTTP = args.includes('--http') || args.includes('--sse') || process.env.USE_HTTP === 'true';
+    const port = parseInt(process.env.PORT || args.find(arg => arg.startsWith('--port='))?.split('=')[1] || '3000');
+
+    if (useHTTP) {
+      console.error(`[HTTP] Starting MATLAB MCP server in HTTP mode on port ${port}`);
+      
+      const httpTransport = new StreamableHTTPTransport(port);
+      
+      const mockTransport = {
+        send: (message: any) => Promise.resolve(),
+        close: () => Promise.resolve(),
+        start: () => Promise.resolve()
+      };
+
+      await this.server.connect(mockTransport);
+      
+      // Set up message handler for HTTP transport
+      httpTransport.setMessageHandler(async (message: any) => {
+        try {
+          console.error('[HTTP] Processing message:', message.method);
+          
+          // Handle MCP protocol messages directly
+          switch (message.method) {
+            case 'initialize':
+              return {
+                jsonrpc: '2.0',
+                id: message.id,
+                result: {
+                  protocolVersion: message.params?.protocolVersion || '2025-03-26',
+                  capabilities: {
+                    tools: {},
+                    resources: {},
+                    prompts: {}
+                  },
+                  serverInfo: {
+                    name: 'matlab-server',
+                    version: '0.1.0'
+                  },
+                  instructions: 'MATLAB MCP Server - Execute MATLAB code and generate scripts'
+                }
+              };
+              
+            case 'notifications/initialized':
+              // Notification - no response needed
+              console.error('[HTTP] Client initialized');
+              return null;
+              
+            case 'tools/list':
+              return {
+                jsonrpc: '2.0',
+                id: message.id,
+                result: {
+                  tools: [
+                    {
+                      name: 'execute_matlab_code',
+                      description: 'Execute MATLAB code and return the results',
+                      inputSchema: {
+                        type: 'object',
+                        properties: {
+                          code: {
+                            type: 'string',
+                            description: 'MATLAB code to execute'
+                          },
+                          saveScript: {
+                            type: 'boolean',
+                            description: 'Whether to save the MATLAB script for future reference'
+                          },
+                          scriptPath: {
+                            type: 'string',
+                            description: 'Custom path to save the MATLAB script (optional)'
+                          }
+                        },
+                        required: ['code']
+                      }
+                    },
+                    {
+                      name: 'generate_matlab_code',
+                      description: 'Generate MATLAB code from a natural language description',
+                      inputSchema: {
+                        type: 'object',
+                        properties: {
+                          description: {
+                            type: 'string',
+                            description: 'Natural language description of what the code should do'
+                          },
+                          saveScript: {
+                            type: 'boolean',
+                            description: 'Whether to save the generated MATLAB script'
+                          },
+                          scriptPath: {
+                            type: 'string',
+                            description: 'Custom path to save the MATLAB script (optional)'
+                          }
+                        },
+                        required: ['description']
+                      }
+                    }
+                  ]
+                }
+              };
+              
+            case 'tools/call':
+              // Handle tool calls
+              return await this.handleToolCall(message);
+              
+            default:
+              return {
+                jsonrpc: '2.0',
+                id: message.id,
+                error: {
+                  code: -32601,
+                  message: `Method not found: ${message.method}`
+                }
+              };
+          }
+        } catch (error) {
+          console.error('[HTTP] Error processing message:', error);
+          return {
+            jsonrpc: '2.0',
+            id: message.id,
+            error: {
+              code: -32603,
+              message: 'Internal error',
+              data: error instanceof Error ? error.message : String(error)
+            }
+          };
+        }
+      });
+      
+      await httpTransport.start();
+      
+      process.on('SIGINT', async () => {
+        await httpTransport.stop();
+        process.exit(0);
+      });
+      
+    } else {
+      console.error('[STDIO] Starting MATLAB MCP server in stdio mode');
+      const transport = new StdioServerTransport();
+      await this.server.connect(transport);
+      console.error('MATLAB MCP server running on stdio');
+    }
   }
+}
+
+// Parse command line and environment
+const args = process.argv.slice(2);
+const showHelp = args.includes('--help') || args.includes('-h');
+
+if (showHelp) {
+  console.log(`
+MATLAB MCP Server
+
+Usage:
+  node build/index.js [options]
+
+Options:
+  --http             Use HTTP transport instead of stdio
+  --sse              Use HTTP transport (alias for --http)
+  --port=<number>    Port for HTTP mode (default: 3000)
+  --help, -h         Show this help message
+
+Environment Variables:
+  USE_HTTP=true      Use HTTP transport
+  PORT=<number>      Port for HTTP mode
+  MATLAB_PATH        Path to MATLAB executable
+
+Examples:
+  # Stdio mode (default)
+  node build/index.js
+  
+  # HTTP mode
+  node build/index.js --http
+  node build/index.js --http --port=3001
+  
+  # Using environment variables
+  USE_HTTP=true PORT=3000 node build/index.js
+`);
+  process.exit(0);
 }
 
 // Create and run the server
