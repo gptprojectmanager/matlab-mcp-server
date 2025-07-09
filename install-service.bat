@@ -81,7 +81,7 @@ echo [INFO] Installing Windows Service...
 :: Download nssm if not exists
 if not exist "nssm.exe" (
     echo [INFO] Downloading NSSM (Non-Sucking Service Manager)...
-    powershell -Command "& {Invoke-WebRequest -Uri 'https://nssm.cc/release/nssm-2.24.zip' -OutFile 'nssm.zip'; Expand-Archive 'nssm.zip' -DestinationPath '.'; Move-Item 'nssm-2.24\win64\nssm.exe' .; Remove-Item 'nssm.zip', 'nssm-2.24' -Recurse -Force}"
+    powershell -Command "Invoke-WebRequest -Uri 'https://nssm.cc/release/nssm-2.24.zip' -OutFile 'nssm.zip'; Expand-Archive 'nssm.zip' -DestinationPath '.'; Move-Item 'nssm-2.24\win64\nssm.exe' .; Remove-Item 'nssm.zip', 'nssm-2.24' -Recurse -Force"
 )
 
 :: Configure service
