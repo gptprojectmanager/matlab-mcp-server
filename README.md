@@ -211,10 +211,9 @@ The script will:
 - Start the service immediately
 
 **Manual Start (Development):**
-```batch
-@echo off
-cd /d "C:\Users\%USERNAME%\matlab-mcp-server"
-set MATLAB_PATH=C:\Program Files\MATLAB\R2023b\bin\matlab.exe
+```cmd
+cd C:\Users\%USERNAME%\matlab-mcp-server
+set MATLAB_PATH=E:\MATLAB\bin\matlab.exe
 node build\index.js --sse --port=3000
 ```
 
