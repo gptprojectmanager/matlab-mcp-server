@@ -40,16 +40,7 @@ A comprehensive MCP server that integrates MATLAB with AI assistants, allowing y
 
 ## Usage
 
-### Stdio Mode (Local - Original)
-```bash
-# Standard local execution
-node build/index.js
-
-# With custom MATLAB path
-MATLAB_PATH="/path/to/matlab" node build/index.js
-```
-
-### HTTP Mode (Remote - New!)
+### HTTP Mode (Remote)
 ```bash
 # Start HTTP server on default port 3000
 node build/index.js --sse
@@ -61,10 +52,17 @@ node build/index.js --sse --port=3001
 USE_SSE=true PORT=3000 MATLAB_PATH="/path/to/matlab" node build/index.js
 ```
 
-### HTTP Mode Endpoints
-- `GET /` - Server information and capabilities
+### Stdio Mode (Local)
+```bash
+# Standard local execution
+node build/index.js
+
+# With custom MATLAB path
+MATLAB_PATH="/path/to/matlab" node build/index.js
+```
+
+### HTTP Endpoints
 - `GET /health` - Health check endpoint
-- `GET /mcp` - MCP protocol discovery
 - `POST /mcp` - MCP requests (initialize, tools/list, tools/call)
 
 ## Development
@@ -192,9 +190,45 @@ curl -X POST http://localhost:3000/mcp \
 - For Claude Code, use `"type": "http"` (not "sse" or "streamable-http")
 
 **Common MATLAB Path Locations:**
-- Windows: Usually `C:\\Program Files\\MATLAB\\R2023b\\bin\\matlab.exe`
-- macOS: Usually `/Applications/MATLAB_R2023b.app/bin/matlab`
-- Linux: Usually `/usr/local/MATLAB/R2023b/bin/matlab`
+- Windows: `C:\\Program Files\\MATLAB\\R2023b\\bin\\matlab.exe`
+- Windows (custom): `E:\\MATLAB\\bin\\matlab.exe`
+- macOS: `/Applications/MATLAB_R2023b.app/bin/matlab`
+- Linux: `/usr/local/MATLAB/R2023b/bin/matlab`
+
+**Note:** The installation script automatically detects MATLAB in standard and custom locations (C:, E: drives).
+
+## Windows Service Installation
+
+**Automatic Installation (Recommended):**
+1. Open PowerShell/Command Prompt as **Administrator**
+2. Navigate to `matlab-mcp-server` directory
+3. Run: `install-service.bat`
+
+The script will:
+- Auto-detect MATLAB installation
+- Install as Windows Service
+- Configure auto-start on boot
+- Start the service immediately
+
+**Manual Start (Development):**
+```batch
+@echo off
+cd /d "C:\Users\%USERNAME%\matlab-mcp-server"
+set MATLAB_PATH=C:\Program Files\MATLAB\R2023b\bin\matlab.exe
+node build\index.js --sse --port=3000
+```
+
+**Service Management:**
+```cmd
+# Start service
+nssm start MatlabMCPServer
+
+# Stop service  
+nssm stop MatlabMCPServer
+
+# Remove service
+nssm remove MatlabMCPServer confirm
+```
 
 ### Debugging
 
