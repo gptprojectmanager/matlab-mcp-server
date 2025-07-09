@@ -87,8 +87,8 @@ if not exist "nssm.exe" (
 :: Configure service
 echo [INFO] Configuring service...
 nssm install "MatlabMCPServer" "node" "build\index.js --sse --port=3000"
-nssm set "MatlabMCPServer" AppDirectory "!SERVER_DIR!"
-nssm set "MatlabMCPServer" AppEnvironmentExtra "MATLAB_PATH=!MATLAB_PATH!"
+nssm set "MatlabMCPServer" AppDirectory "%SERVER_DIR%"
+nssm set "MatlabMCPServer" AppEnvironmentExtra "MATLAB_PATH=%MATLAB_PATH%"
 nssm set "MatlabMCPServer" DisplayName "MATLAB MCP Server"
 nssm set "MatlabMCPServer" Description "MATLAB MCP Server for Claude Code integration"
 nssm set "MatlabMCPServer" Start SERVICE_AUTO_START

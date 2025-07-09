@@ -202,13 +202,18 @@ curl -X POST http://localhost:3000/mcp \
 **Automatic Installation (Recommended):**
 1. Open PowerShell/Command Prompt as **Administrator**
 2. Navigate to `matlab-mcp-server` directory
-3. Run: `install-service.bat`
+3. Run: `install-service-fixed.bat`
 
 The script will:
-- Auto-detect MATLAB installation
-- Install as Windows Service
-- Configure auto-start on boot
+- Check if port 3000 is available
+- Auto-detect MATLAB installation (including E: drive)
+- Create Windows scheduled task for auto-start
+- Configure to start automatically on boot
 - Start the service immediately
+
+**Alternative Scripts:**
+- `install-service-simple.bat` - Manual start (no auto-boot)
+- `install-service.bat` - NSSM version (experimental)
 
 **Manual Start (Development):**
 ```cmd
